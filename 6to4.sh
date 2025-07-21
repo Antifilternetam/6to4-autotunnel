@@ -2,7 +2,6 @@
 
 set -e
 
-# Generate random interface name (e.g. t6t4xk2)
 TUN_IF="t6t$(tr -dc a-z0-9 </dev/urandom | head -c 4)"
 
 RED="\033[0;31m"
@@ -55,7 +54,6 @@ setup_tunnel() {
   echo -e "🌐 Peer IPv6:  ${YELLOW}$PEER_IPV6${NC}"
   echo -e "🧪 Test:      ${CYAN}ping6 $PEER_IPV6${NC}"
 
-  # Save for Rathole
   echo "$ROLE" > ~/.6to4_role
   echo "$IRAN_IPV4" > ~/.6to4_iran_ipv4
 }
@@ -74,21 +72,28 @@ remove_all_tunnels() {
 }
 
 setup_rathole() {
-  echo -e "\n${BLUE}[+] Launching Rathole Tunnel setup...${NC}"
-  echo -e "${CYAN}This uses the script by Musixal (GitHub: Musixal/rathole-tunnel)${NC}"
+  echo -e "\n${BLUE}[+] راه‌اندازی رتهول...${NC}"
+  echo -e "${CYAN}این ابزار از پروژه Musixal/rathole-tunnel استفاده می‌کند.${NC}"
 
   ROLE=$(cat ~/.6to4_role 2>/dev/null || echo "unknown")
   IRAN_IPV4=$(cat ~/.6to4_iran_ipv4 2>/dev/null || echo "")
 
   if [[ "$ROLE" == "iran" ]]; then
-    echo -e "${GREEN}[✔] Detected IRAN server. Auto-answering IPv6 question with YES.${NC}"
+    echo -e "\n${GREEN}شما در سرور ایران هستید.${NC}"
+    echo -e "${YELLOW}در ادامه از شما پرسیده می‌شود آیا می‌خواهید از IPv6 استفاده کنید؟${NC}"
+    echo -e "${CYAN}✅ لطفاً در آن مرحله گزینه 'yes' را وارد کنید تا تونل با IPv6 ساخته شود.${NC}"
+    echo -e "\n${GREEN}اگر آماده‌ای، 'yes' را تایپ کن تا نصب رتهول آغاز شود...${NC}"
     yes | bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
+
   elif [[ "$ROLE" == "kharej" && -n "$IRAN_IPV4" ]]; then
-    IPV6_IRAN=$(ipv4_to_6to4 "$IRAN_IPV4")
-    echo -e "${GREEN}[✔] Using IRAN server's IPv6: $IPV6_IRAN${NC}"
-    bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh) <<< "$IPV6_IRAN"
+    echo -e "\n${GREEN}🛰️ توجه: از آدرس IPv6 لوکال ساخته‌شده در سرور ایران برای برقراری ارتباط استفاده کنید.${NC}"
+    echo -e "${CYAN}⏳ لطفاً وقتی اسکریپت از شما آدرس سرور می‌خواهد، همان IPv6 را وارد نمایید.${NC}"
+    echo -e "${CYAN}✅ اگر آماده‌ای، Enter را بزن تا وارد منوی رتهول شوی...${NC}"
+    read
+    bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
+
   else
-    echo -e "${RED}[!] Role or Iran IPv4 not set. Please run 6to4 setup first.${NC}"
+    echo -e "${RED}[!] نقش یا IP سرور ایران مشخص نیست. لطفاً ابتدا تونل 6to4 را پیکربندی کنید.${NC}"
   fi
 }
 
@@ -111,6 +116,6 @@ while true; do
     0) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
     *) echo -e "${RED}Invalid option. Try again.${NC}" ;;
   esac
-  echo -e "\n${CYAN}Press Enter to return to menu...${NC}"
+  echo -e "\n${CYAN}برای بازگشت به منو Enter بزنید...${NC}"
   read
 done
