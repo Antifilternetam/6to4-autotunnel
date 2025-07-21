@@ -14,6 +14,9 @@ NC="\033[0m"
 banner() {
   echo -e "\n${CYAN}========================================${NC}"
   echo -e "${GREEN}     آنتی فیلترنتم - AntiFilterNetam     ${NC}"
+  echo -e "${CYAN}========================================${NC}"
+  echo -e "📦 Github:    ${BLUE}https://github.com/Antifilternetam/6to4-autotunnel${NC}"
+  echo -e "📣 Telegram:  ${CYAN}@antifilteram${NC}"
   echo -e "${CYAN}========================================${NC}\n"
 }
 
@@ -82,8 +85,9 @@ setup_rathole() {
     echo -e "\n${GREEN}شما در سرور ایران هستید.${NC}"
     echo -e "${YELLOW}در ادامه از شما پرسیده می‌شود آیا می‌خواهید از IPv6 استفاده کنید؟${NC}"
     echo -e "${CYAN}✅ لطفاً در آن مرحله گزینه 'yes' را وارد کنید تا تونل با IPv6 ساخته شود.${NC}"
-    echo -e "\n${GREEN}اگر آماده‌ای، 'yes' را تایپ کن تا نصب رتهول آغاز شود...${NC}"
-    yes | bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
+    echo -e "\n${GREEN}اگر آماده‌ای، Enter را بزن تا نصب رتهول آغاز شود...${NC}"
+    read
+    bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
 
   elif [[ "$ROLE" == "kharej" && -n "$IRAN_IPV4" ]]; then
     echo -e "\n${GREEN}🛰️ توجه: از آدرس IPv6 لوکال ساخته‌شده در سرور ایران برای برقراری ارتباط استفاده کنید.${NC}"
