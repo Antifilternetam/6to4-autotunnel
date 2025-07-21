@@ -32,14 +32,14 @@ setup_tunnel() {
   read -p "Enter the public IPv4 of the KHAREJ server: " KHAREJ_IPV4
 
   if [[ "$ROLE" == "iran" ]]; then
-      MY_IPV4="$IRAN_IPV4"
-      PEER_IPV4="$KHAREJ_IPV4"
+    MY_IPV4="$IRAN_IPV4"
+    PEER_IPV4="$KHAREJ_IPV4"
   elif [[ "$ROLE" == "kharej" ]]; then
-      MY_IPV4="$KHAREJ_IPV4"
-      PEER_IPV4="$IRAN_IPV4"
+    MY_IPV4="$KHAREJ_IPV4"
+    PEER_IPV4="$IRAN_IPV4"
   else
-      echo -e "${RED}❌ Invalid role. Use 'iran' or 'kharej'.${NC}"
-      return
+    echo -e "${RED}❌ Invalid role. Use 'iran' or 'kharej'.${NC}"
+    return
   fi
 
   MY_IPV6=$(ipv4_to_6to4 "$MY_IPV4")
@@ -103,6 +103,7 @@ setup_rathole() {
   fi
 }
 
+# Menu loop
 while true; do
   banner
   echo -e "${YELLOW}Choose an option:${NC}"
@@ -124,4 +125,4 @@ while true; do
   esac
   echo -e "\n${CYAN}برای بازگشت به منو Enter بزنید...${NC}"
   read
-  
+done
