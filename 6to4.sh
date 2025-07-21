@@ -54,6 +54,10 @@ setup_tunnel() {
   echo -e "🌐 Your IPv6:  ${YELLOW}$MY_IPV6${NC}"
   echo -e "🌐 Peer IPv6:  ${YELLOW}$PEER_IPV6${NC}"
   echo -e "🧪 Test:      ${CYAN}ping6 $PEER_IPV6${NC}"
+
+  # Save for Rathole
+  echo "$ROLE" > ~/.6to4_role
+  echo "$IRAN_IPV4" > ~/.6to4_iran_ipv4
 }
 
 show_ipv6() {
@@ -69,12 +73,32 @@ remove_all_tunnels() {
   done
 }
 
+setup_rathole() {
+  echo -e "\n${BLUE}[+] Launching Rathole Tunnel setup...${NC}"
+  echo -e "${CYAN}This uses the script by Musixal (GitHub: Musixal/rathole-tunnel)${NC}"
+
+  ROLE=$(cat ~/.6to4_role 2>/dev/null || echo "unknown")
+  IRAN_IPV4=$(cat ~/.6to4_iran_ipv4 2>/dev/null || echo "")
+
+  if [[ "$ROLE" == "iran" ]]; then
+    echo -e "${GREEN}[✔] Detected IRAN server. Auto-answering IPv6 question with YES.${NC}"
+    yes | bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
+  elif [[ "$ROLE" == "kharej" && -n "$IRAN_IPV4" ]]; then
+    IPV6_IRAN=$(ipv4_to_6to4 "$IRAN_IPV4")
+    echo -e "${GREEN}[✔] Using IRAN server's IPv6: $IPV6_IRAN${NC}"
+    bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh) <<< "$IPV6_IRAN"
+  else
+    echo -e "${RED}[!] Role or Iran IPv4 not set. Please run 6to4 setup first.${NC}"
+  fi
+}
+
 while true; do
   banner
   echo -e "${YELLOW}Choose an option:${NC}"
   echo " 1) Setup 6to4 Tunnel"
   echo " 2) Show IPv6 Address"
   echo " 3) Remove All 6to4 Tunnels"
+  echo " 4) Setup Rathole Tunnel"
   echo " 0) Exit"
   echo -ne "\n${BLUE}Enter your choice: ${NC}"
   read CHOICE
@@ -83,6 +107,7 @@ while true; do
     1) setup_tunnel ;;
     2) show_ipv6 ;;
     3) remove_all_tunnels ;;
+    4) setup_rathole ;;
     0) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
     *) echo -e "${RED}Invalid option. Try again.${NC}" ;;
   esac
