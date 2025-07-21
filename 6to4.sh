@@ -43,7 +43,8 @@ setup_tunnel() {
 
   echo -e "\n${BLUE}[+] Setting up 6to4 tunnel on $TUN_IF...${NC}"
   sudo modprobe ipv6
-  sudo ip tunnel add $TUN_IF mode sit remote any local "$MY_IPV4" ttl 255 || true
+  sudo ip tunnel del $TUN_IF 2>/dev/null || true
+  sudo ip tunnel add $TUN_IF mode sit remote any local "$MY_IPV4" ttl 255
   sudo ip link set $TUN_IF up
   sudo ip -6 addr add "$MY_IPV6/16" dev $TUN_IF
   sudo ip6tables -C INPUT -p icmpv6 -j ACCEPT 2>/dev/null || sudo ip6tables -A INPUT -p icmpv6 -j ACCEPT
