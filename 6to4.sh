@@ -2,20 +2,13 @@
 
 set -e
 
-# ----------------------
-# 6to4 AutoTunnel Script (Pro Version)
-# Author: Antifilternetam
-# ----------------------
-
-SERVICE_FILE="/etc/systemd/system/6to4.service"
-SCRIPT_PATH="/usr/local/bin/setup-6to4.sh"
-
+TUN_IF="sit0"
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 BLUE="\033[0;34m"
 YELLOW="\033[1;33m"
 CYAN="\033[0;36m"
-NC="\033[0m" # No Color
+NC="\033[0m"
 
 banner() {
   echo -e "\n${CYAN}========================================${NC}"
@@ -23,126 +16,72 @@ banner() {
   echo -e "${CYAN}========================================${NC}\n"
 }
 
-print_menu() {
-  while true; do
-    banner
-    echo -e "${YELLOW}Choose an option:${NC}"
-    echo " 1) Install 6to4 Tunnel"
-    echo " 2) View Tunnel Status"
-    echo " 3) View Assigned IPv6 Address"
-    echo " 4) Uninstall Tunnel"
-    echo " 5) Help"
-    echo " 0) Exit"
-    echo -ne "\n${BLUE}Enter choice [0-5]: ${NC}"
-    read choice
-    case $choice in
-      1) check_installed install; install_tunnel ;;
-      2) status_info ;;
-      3) show_ipv6 ;;
-      4) uninstall_tunnel ;;
-      5) print_help ;;
-      0) echo -e "${GREEN}Exiting.${NC}"; exit 0 ;;
-      *) echo -e "${RED}Invalid choice. Please try again.${NC}" ;;
-    esac
-    echo -e "\n${CYAN}Press Enter to return to menu...${NC}"
-    read
-  done
+ipv4_to_6to4() {
+  local ip=$1
+  IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
+  printf "2002:%02x%02x:%02x%02x::1\n" "$o1" "$o2" "$o3" "$o4"
 }
 
-print_help() {
-  echo -e "\n${CYAN}Usage:${NC} bash 6to4.sh [install|uninstall|status|ipv6|--help]"
-  echo -e "${YELLOW}  install     ${NC}: setup 6to4 tunnel"
-  echo -e "${YELLOW}  uninstall   ${NC}: remove all 6to4 tunnel settings"
-  echo -e "${YELLOW}  status      ${NC}: show tunnel and IPv6 info"
-  echo -e "${YELLOW}  ipv6        ${NC}: show assigned IPv6 address"
-  echo -e "${YELLOW}  --help      ${NC}: show this help menu"
-  echo ""
-  return
-}
+setup_tunnel() {
+  read -p "Is this the 'iran' or 'kharej' server? (iran/kharej): " ROLE
+  read -p "Enter the public IPv4 of the IRAN server: " IRAN_IPV4
+  read -p "Enter the public IPv4 of the KHAREJ server: " KHAREJ_IPV4
 
-check_installed() {
-  if [[ -f "$SERVICE_FILE" ]]; then
-    if [[ "$1" == "install" ]]; then
-      echo -e "${RED}[!] Tunnel already installed. Use 'status' or 'uninstall'.${NC}"
-      exit 1
-    fi
+  if [[ "$ROLE" == "iran" ]]; then
+      MY_IPV4="$IRAN_IPV4"
+      PEER_IPV4="$KHAREJ_IPV4"
+  elif [[ "$ROLE" == "kharej" ]]; then
+      MY_IPV4="$KHAREJ_IPV4"
+      PEER_IPV4="$IRAN_IPV4"
+  else
+      echo -e "${RED}❌ Invalid role. Use 'iran' or 'kharej'.${NC}"
+      return
   fi
-}
 
-create_script() {
-  cat <<EOF > $SCRIPT_PATH
-#!/bin/bash
-modprobe ipv6
-modprobe sit
-ip tunnel add sit0 mode sit ttl 255 || true
-ip link set sit0 up
-ip -6 addr add $IP6/64 dev sit0 || true
-ip -6 route add default dev sit0 metric 1024 || true
-EOF
-  chmod +x $SCRIPT_PATH
-}
+  MY_IPV6=$(ipv4_to_6to4 "$MY_IPV4")
+  PEER_IPV6=$(ipv4_to_6to4 "$PEER_IPV4")
 
-create_service() {
-  cat <<EOF > $SERVICE_FILE
-[Unit]
-Description=6to4 Tunnel Setup
-After=network.target
+  echo -e "\n${BLUE}[+] Setting up 6to4 tunnel on $TUN_IF...${NC}"
+  sudo modprobe ipv6
+  sudo ip tunnel add $TUN_IF mode sit remote any local "$MY_IPV4" ttl 255 || true
+  sudo ip link set $TUN_IF up
+  sudo ip -6 addr add "$MY_IPV6/16" dev $TUN_IF
+  sudo ip6tables -C INPUT -p icmpv6 -j ACCEPT 2>/dev/null || sudo ip6tables -A INPUT -p icmpv6 -j ACCEPT
 
-[Service]
-Type=oneshot
-ExecStart=$SCRIPT_PATH
-RemainAfterExit=true
-
-[Install]
-WantedBy=multi-user.target
-EOF
-  systemctl daemon-reexec
-  systemctl enable --now 6to4.service
-}
-
-get_ipv6() {
-  HEX_IP=$(printf '%02x' $(echo $MY_IP | tr '.' ' '))
-  IP6="2002:${HEX_IP:0:4}:${HEX_IP:4:4}::1"
-}
-
-install_tunnel() {
-  echo -e "${BLUE}[+] Starting 6to4 Tunnel Setup${NC}"
-  read -p "Enter your public IPv4 address: " MY_IP
-  get_ipv6
-  create_script
-  create_service
-  echo -e "${GREEN}[✔] IPv6 assigned: $IP6${NC}"
-  echo -e "${GREEN}[✔] Tunnel active. Use 'status' to check.${NC}"
-}
-
-uninstall_tunnel() {
-  echo -e "${YELLOW}[+] Removing 6to4 tunnel...${NC}"
-  systemctl stop 6to4.service || true
-  systemctl disable 6to4.service || true
-  rm -f $SERVICE_FILE $SCRIPT_PATH
-  ip tunnel del sit0 2>/dev/null || true
-  systemctl daemon-reload
-  echo -e "${GREEN}[✔] Tunnel removed.${NC}"
-  exit 0
-}
-
-status_info() {
-  echo -e "${CYAN}[+] Tunnel info:${NC}\n"
-  ip -6 addr show dev sit0 || echo -e "${RED}sit0 not configured.${NC}"
-  ip -6 route | grep sit0 || echo -e "${RED}No IPv6 route found.${NC}"
-  systemctl status 6to4.service --no-pager
-  return
+  echo -e "${GREEN}✅ 6to4 tunnel ready${NC}"
+  echo -e "🌐 Your IPv6:  ${YELLOW}$MY_IPV6${NC}"
+  echo -e "🌐 Peer IPv6:  ${YELLOW}$PEER_IPV6${NC}"
+  echo -e "🧪 Test:      ${CYAN}ping6 $PEER_IPV6${NC}"
 }
 
 show_ipv6() {
-  echo -e "${CYAN}[+] Assigned IPv6 Address (sit0):${NC}"
-  ip -6 addr show dev sit0 | grep inet6 | awk '{print $2}' || echo -e "${RED}[!] No IPv6 address found on sit0${NC}"
-  return
+  echo -e "\n${CYAN}Your current IPv6 on $TUN_IF:${NC}"
+  ip -6 addr show dev $TUN_IF | grep inet6 | awk '{print $2}' || echo -e "${RED}[!] No IPv6 found${NC}"
 }
 
-# ----------------------
-# Main Execution Logic
-# ----------------------
+remove_tunnel() {
+  echo -e "${YELLOW}Removing tunnel $TUN_IF...${NC}"
+  sudo ip tunnel del $TUN_IF 2>/dev/null || echo "Already removed."
+  echo -e "${GREEN}✅ Tunnel removed.${NC}"
+}
 
-banner
-print_menu
+while true; do
+  banner
+  echo -e "${YELLOW}Choose an option:${NC}"
+  echo " 1) Setup 6to4 Tunnel"
+  echo " 2) Show IPv6 Address"
+  echo " 3) Remove Tunnel"
+  echo " 0) Exit"
+  echo -ne "\n${BLUE}Enter your choice: ${NC}"
+  read CHOICE
+
+  case $CHOICE in
+    1) setup_tunnel ;;
+    2) show_ipv6 ;;
+    3) remove_tunnel ;;
+    0) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
+    *) echo -e "${RED}Invalid option. Try again.${NC}" ;;
+  esac
+  echo -e "\n${CYAN}Press Enter to return to menu...${NC}"
+  read
+done
