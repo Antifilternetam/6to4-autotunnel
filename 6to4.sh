@@ -13,9 +13,9 @@ NC="\033[0m"
 
 banner() {
   echo -e "\n${CYAN}========================================${NC}"
-  echo -e "${GREEN}     آنتی فیلترنتم - AntiFilterNetam     ${NC}"
+  echo -e "${GREEN}         تانلا تانل - Tunnela Tunnel        ${NC}"
   echo -e "${CYAN}========================================${NC}"
-  echo -e "📦 Github:    ${BLUE}https://github.com/Antifilternetam/6to4-autotunnel${NC}"
+  echo -e "📦 Github:    ${BLUE}https://github.com/Antifilternetam/6to4-tunnela${NC}"
   echo -e "📣 Telegram:  ${CYAN}@antifilteram${NC}"
   echo -e "${CYAN}========================================${NC}\n"
 }
@@ -124,4 +124,4 @@ while true; do
   esac
   echo -e "\n${CYAN}برای بازگشت به منو Enter بزنید...${NC}"
   read
-done
+  
