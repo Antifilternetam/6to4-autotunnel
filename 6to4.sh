@@ -62,8 +62,8 @@ setup_tunnel() {
 }
 
 show_ipv6() {
-  echo -e "\n${CYAN}Your current IPv6 on all 6to4 interfaces:${NC}"
-  ip -6 addr | grep inet6 | grep 2002 || echo -e "${RED}[!] No 6to4 IPv6 found${NC}"
+  echo -e "\n${CYAN}🛰️ Your active 6to4 IPv6 addresses:${NC}"
+  ip -6 addr show | grep -oP 'inet6 2002:[0-9a-f:]+(?=/)' | awk '{print $2}' || echo -e "${RED}[!] No 6to4 IPv6 found${NC}"
 }
 
 remove_all_tunnels() {
