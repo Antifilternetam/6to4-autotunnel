@@ -17,7 +17,7 @@ banner() {
   echo -e "${GREEN}         تانلا تانل - Tunnela Tunnel        ${NC}"
   echo -e "${CYAN}========================================${NC}"
   echo -e "📦 Github:    ${BLUE}https://github.com/Antifilternetam/6to4-tunnela${NC}"
-  echo -e "📣 Telegram:  ${CYAN}@antifilteram${NC}"
+  echo -e "📣 Telegram:  ${CYAN}@tunnela${NC}"
   echo -e "${CYAN}========================================${NC}\n"
 }
 
