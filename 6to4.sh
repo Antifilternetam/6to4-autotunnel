@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 set -e
@@ -84,7 +85,7 @@ setup_rathole() {
   if [[ "$ROLE" == "iran" ]]; then
     echo -e "\n${GREEN}شما در سرور ایران هستید.${NC}"
     echo -e "${YELLOW}در ادامه از شما پرسیده می‌شود آیا می‌خواهید از IPv6 استفاده کنید؟${NC}"
-    echo -e "${CYAN}✅ لطفاً در آن مرحله گزینه 'yes' را وارد کنید تا تونل با IPv6 ساخته شود.${NC}"
+    echo -e "${CYAN}✅ لطفاً در آن مرحله گزینه 'y' را وارد کنید تا تونل با IPv6 ساخته شود.${NC}"
     echo -e "\n${GREEN}اگر آماده‌ای، Enter را بزن تا نصب رتهول آغاز شود...${NC}"
     read
     bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
