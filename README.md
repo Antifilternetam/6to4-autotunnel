@@ -32,7 +32,7 @@ Port 41 must be open (check your VPS firewall or provider)
 
 
 ---
-🧪 IPv6 
+🧪 IPv6 test
 
 After setup, test from one server to the other using:
 
