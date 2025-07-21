@@ -126,3 +126,5 @@ while true; do
   echo -e "\n${CYAN}برای بازگشت به منو Enter بزنید...${NC}"
   read
 done
+
+---
