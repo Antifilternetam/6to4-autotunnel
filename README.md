@@ -135,7 +135,8 @@ bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Antifilternetam/6to4-tu
 
 > حمایت شما باعث میشه با قدرت بیشتر ادامه بدیم 💪
 
-📣 کانال تلگرام ما: [@antifilteram](https://t.me/antifilteram)
+📣 کانال تلگرام ما: [@tunnela] https://t.me/tunnelaa
+)
 ```
 
 
