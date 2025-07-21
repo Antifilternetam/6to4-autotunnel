@@ -90,8 +90,10 @@ setup_rathole() {
     bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
 
   elif [[ "$ROLE" == "kharej" && -n "$IRAN_IPV4" ]]; then
-    echo -e "\n${GREEN}🛰️ توجه: از آدرس IPv6 لوکال ساخته‌شده در سرور ایران برای برقراری ارتباط استفاده کنید.${NC}"
-    echo -e "${CYAN}⏳ لطفاً وقتی اسکریپت از شما آدرس سرور می‌خواهد، همان IPv6 را وارد نمایید.${NC}"
+    IRAN_IPV6=$(ipv4_to_6to4 "$IRAN_IPV4")
+    echo -e "\n${GREEN}🛰️ توجه: برای اتصال به سرور ایران، از آدرس IPv6 زیر استفاده کنید:${NC}"
+    echo -e "${YELLOW}$IRAN_IPV6${NC}"
+    echo -e "${CYAN}⏳ لطفاً وقتی اسکریپت از شما آدرس سرور می‌خواهد، همین IPv6 را وارد نمایید.${NC}"
     echo -e "${CYAN}✅ اگر آماده‌ای، Enter را بزن تا وارد منوی رتهول شوی...${NC}"
     read
     bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
