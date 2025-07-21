@@ -10,11 +10,33 @@ set -e
 SERVICE_FILE="/etc/systemd/system/6to4.service"
 SCRIPT_PATH="/usr/local/bin/setup-6to4.sh"
 
+print_menu() {
+  echo -e "\nChoose an option:"
+  echo "1) Install 6to4 Tunnel"
+  echo "2) View Tunnel Status"
+  echo "3) View Local IPv6 Addresses"
+  echo "4) Uninstall Tunnel"
+  echo "5) Help"
+  echo "0) Exit"
+  echo -n "Enter choice [0-5]: "
+  read choice
+  case $choice in
+    1) check_installed install; install_tunnel ;;
+    2) status_info ;;
+    3) show_ipv6 ;;
+    4) uninstall_tunnel ;;
+    5) print_help ;;
+    0) echo "Exiting."; exit 0 ;;
+    *) echo "Invalid choice."; exit 1 ;;
+  esac
+}
+
 print_help() {
-  echo -e "\nUsage: bash 6to4.sh [install|uninstall|status|--help]"
-  echo "  install     : (default) setup 6to4 tunnel"
+  echo -e "\nUsage: bash 6to4.sh [install|uninstall|status|ipv6|--help]"
+  echo "  install     : setup 6to4 tunnel"
   echo "  uninstall   : remove all 6to4 tunnel settings"
   echo "  status      : show tunnel and IPv6 info"
+  echo "  ipv6        : show local IPv6 addresses"
   echo "  --help      : show this help menu"
   echo ""
   exit 0
@@ -22,8 +44,10 @@ print_help() {
 
 check_installed() {
   if [[ -f "$SERVICE_FILE" ]]; then
-    echo "[!] Tunnel already installed. Use 'status' or 'uninstall'."
-    exit 1
+    if [[ "$1" == "install" ]]; then
+      echo "[!] Tunnel already installed. Use 'status' or 'uninstall'."
+      exit 1
+    fi
   fi
 }
 
@@ -70,7 +94,7 @@ install_tunnel() {
   create_script
   create_service
   echo "[✔] IPv6 assigned: $IP6"
-  echo "[✔] Tunnel active. Use 'bash 6to4.sh status' to check."
+  echo "[✔] Tunnel active. Use 'status' to check."
 }
 
 uninstall_tunnel() {
@@ -93,26 +117,15 @@ status_info() {
   exit 0
 }
 
+show_ipv6() {
+  echo "[+] Local IPv6 Addresses:"
+  ip -6 addr show | grep inet6
+  exit 0
+}
+
 # ----------------------
 # Main Execution Logic
 # ----------------------
 
-case "$1" in
-  uninstall)
-    uninstall_tunnel
-    ;;
-  status)
-    status_info
-    ;;
-  --help|-h)
-    print_help
-    ;;
-  install|"")
-    check_installed
-    install_tunnel
-    ;;
-  *)
-    echo "[!] Unknown option: $1"
-    print_help
-    ;;
-esac
+# Always launch menu by default, even from curl/bash installer
+print_menu
