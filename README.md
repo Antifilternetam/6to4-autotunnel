@@ -32,16 +32,19 @@ Port 41 must be open (check your VPS firewall or provider)
 
 
 ---
-🧪 IPv6 Test 
+🧪 IPv6 
 
 After setup, test from one server to the other using:
 
 Iran server 
+```
  ping 2002:2e1f:4f5d::1
+```
 Kharej server
+```
 Ping 2002:5eb6:958a::1
----
 
+```
 
 🇮🇷 راهنمای فارسی
 
