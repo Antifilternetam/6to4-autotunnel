@@ -44,6 +44,8 @@ print_menu() {
       0) echo -e "${GREEN}Exiting.${NC}"; exit 0 ;;
       *) echo -e "${RED}Invalid choice. Please try again.${NC}" ;;
     esac
+    echo -e "\n${CYAN}Press Enter to return to menu...${NC}"
+    read
   done
 }
 
@@ -55,7 +57,7 @@ print_help() {
   echo -e "${YELLOW}  ipv6        ${NC}: show assigned IPv6 address"
   echo -e "${YELLOW}  --help      ${NC}: show this help menu"
   echo ""
-  exit 0
+  return
 }
 
 check_installed() {
@@ -129,12 +131,13 @@ status_info() {
   ip -6 addr show dev sit0 || echo -e "${RED}sit0 not configured.${NC}"
   ip -6 route | grep sit0 || echo -e "${RED}No IPv6 route found.${NC}"
   systemctl status 6to4.service --no-pager
-  exit 0
+  return
 }
 
 show_ipv6() {
   echo -e "${CYAN}[+] Assigned IPv6 Address (sit0):${NC}"
   ip -6 addr show dev sit0 | grep inet6 | awk '{print $2}' || echo -e "${RED}[!] No IPv6 address found on sit0${NC}"
+  return
 }
 
 # ----------------------
