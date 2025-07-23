@@ -2,7 +2,7 @@
 
 set -e
 
-TUN_IF="t6t$(tr -dc a-z0-9 </dev/urandom | head -c 5)"
+TUN_IF="t6t$(tr -dc a-z0-9 </dev/urandom | head -c 4)"
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"
@@ -45,11 +45,12 @@ setup_tunnel() {
   MY_IPV6=$(ipv4_to_6to4 "$MY_IPV4")
   PEER_IPV6=$(ipv4_to_6to4 "$PEER_IPV4")
 
-  echo -e "\n${BLUE}[+] Creating 6to4 tunnel interface: $TUN_IF...${NC}"
-
+  echo -e "\n${BLUE}[+] Creating 6to4 IPv6 tunnel: $TUN_IF...${NC}"
   sudo modprobe ipv6
-  sudo ip tunnel del "$TUN_IF" 2>/dev/null || true
-  sudo ip tunnel add "$TUN_IF" mode sit remote any local "$MY_IPV4" ttl 255
+  sudo ip tunnel add "$TUN_IF" mode sit remote any local "$MY_IPV4" ttl 255 || {
+    echo -e "${RED}⛔️ Failed to add tunnel. It may already exist.${NC}"
+    return
+  }
   sudo ip link set "$TUN_IF" up
   sudo ip -6 addr add "$MY_IPV6/16" dev "$TUN_IF"
   sudo ip6tables -C INPUT -p icmpv6 -j ACCEPT 2>/dev/null || sudo ip6tables -A INPUT -p icmpv6 -j ACCEPT
@@ -64,17 +65,20 @@ setup_tunnel() {
 }
 
 show_ipv6() {
-  echo -e "\n${CYAN}🛰️ Your active 6to4 IPv6 addresses:${NC}"
+  echo -e "\n${CYAN}🛰️ Active 6to4 IPv6 addresses:${NC}"
   ip -6 addr show | grep -oP 'inet6 2002:[0-9a-f:]+(?=/)' | awk '{print $2}' || echo -e "${RED}[!] No 6to4 IPv6 found${NC}"
 }
 
 remove_all_tunnels() {
-  echo -e "${YELLOW}🔧 Cleaning all tunnels and rules...${NC}"
+  echo -e "${YELLOW}🧹 در حال حذف کامل تونل‌ها...${NC}"
 
-  for tun in $(ip tunnel show | awk '{print $1}'); do
-    sudo ip tunnel del "$tun" 2>/dev/null
+  for t in $(ip tunnel show | grep '^t6t' | awk '{print $1}'); do
+    sudo ip -6 addr flush dev "$t" 2>/dev/null
+    sudo ip link set "$t" down 2>/dev/null
+    sudo ip tunnel del "$t" 2>/dev/null && echo -e "${GREEN}✔ Removed: $t${NC}"
   done
 
+  # Also clean up sit0 or gre0 if left
   sudo ip -6 addr flush dev sit0 2>/dev/null
   sudo ip link set sit0 down 2>/dev/null
   sudo ip tunnel del sit0 2>/dev/null
@@ -83,12 +87,13 @@ remove_all_tunnels() {
   sudo ip link set gre0 down 2>/dev/null
   sudo ip tunnel del gre0 2>/dev/null
 
+  # Firewall rules
   sudo ip6tables -D INPUT -p icmpv6 -j ACCEPT 2>/dev/null
   sudo iptables -D INPUT -p gre -j ACCEPT 2>/dev/null
 
   rm -f ~/.6to4_role ~/.6to4_iran_ipv4
 
-  echo -e "${GREEN}✔️ Tunnel removal complete.${NC}"
+  echo -e "${GREEN}✅ همه تونل‌ها پاک شدند.${NC}"
 }
 
 setup_rathole() {
@@ -99,22 +104,24 @@ setup_rathole() {
   IRAN_IPV4=$(cat ~/.6to4_iran_ipv4 2>/dev/null || echo "")
 
   if [[ "$ROLE" == "iran" ]]; then
-    echo -e "\n${GREEN}📍 شما در سرور ایران هستید.${NC}"
-    echo -e "${YELLOW}وقتی از شما پرسید که آیا می‌خواهید از IPv6 استفاده کنید، فقط ${CYAN}y${YELLOW} را وارد کنید.${NC}"
-    echo -e "${CYAN}✅ اگر آماده‌ای، Enter را بزن تا نصب آغاز شود...${NC}"
+    echo -e "\n${GREEN}🌍 شما در سرور ایران هستید.${NC}"
+    echo -e "${YELLOW}در ادامه از شما پرسیده می‌شود آیا می‌خواهید از IPv6 استفاده کنید؟${NC}"
+    echo -e "${CYAN}✅ لطفاً گزینه 'y' را وارد کنید تا از IPv6 استفاده شود.${NC}"
+    echo -e "\n${GREEN}اگر آماده‌ای، Enter را بزن تا نصب آغاز شود...${NC}"
     read
     bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
 
   elif [[ "$ROLE" == "kharej" && -n "$IRAN_IPV4" ]]; then
     IRAN_IPV6=$(ipv4_to_6to4 "$IRAN_IPV4")
-    echo -e "\n${GREEN}🛰️ برای اتصال به سرور ایران، از آدرس IPv6 زیر استفاده کن:${NC}"
-    echo -e "${YELLOW}$IRAN_IPV6${NC}"
-    echo -e "${CYAN}✅ اگر آماده‌ای، Enter را بزن تا وارد منوی رتهول شوی...${NC}"
+    echo -e "\n${GREEN}🛰️ برای اتصال به سرور ایران، از آدرس‌های زیر استفاده کن:${NC}"
+    echo -e "🔹 IPv6: ${YELLOW}$IRAN_IPV6${NC}"
+    echo -e "${CYAN}✅ وقتی ازت IP خواست، این رو وارد کن.${NC}"
+    echo -e "\nاگر آماده‌ای Enter رو بزن..."
     read
     bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
 
   else
-    echo -e "${RED}[!] نقش یا IP سرور ایران مشخص نیست. لطفاً ابتدا تونل 6to4 را پیکربندی کنید.${NC}"
+    echo -e "${RED}[!] نقش سرور مشخص نیست. اول تونل 6to4 رو تنظیم کن.${NC}"
   fi
 }
 
@@ -135,9 +142,9 @@ while true; do
     2) show_ipv6 ;;
     3) remove_all_tunnels ;;
     4) setup_rathole ;;
-    0) echo -e "${GREEN}👋 Goodbye!${NC}"; exit 0 ;;
+    0) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
     *) echo -e "${RED}Invalid option. Try again.${NC}" ;;
   esac
-  echo -e "\n${CYAN}برای بازگشت به منو Enter بزنید...${NC}"
+  echo -e "\n${CYAN}برای بازگشت به منو Enter بزن...${NC}"
   read
 done
