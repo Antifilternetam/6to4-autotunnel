@@ -3,7 +3,6 @@
 set -e
 
 TUN_IF="t6t$(tr -dc a-z0-9 </dev/urandom | head -c 4)"
-
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 BLUE="\033[0;34m"
@@ -45,88 +44,64 @@ setup_tunnel() {
   MY_IPV6=$(ipv4_to_6to4 "$MY_IPV4")
   PEER_IPV6=$(ipv4_to_6to4 "$PEER_IPV4")
 
-  echo -e "\n${BLUE}[+] Creating tunnel interface: $TUN_IF...${NC}"
-  sudo modprobe ipv6
-  sudo ip tunnel add $TUN_IF mode sit remote any local "$MY_IPV4" ttl 255
-  sudo ip link set $TUN_IF up
-  sudo ip -6 addr add "$MY_IPV6/16" dev $TUN_IF
-  sudo ip6tables -C INPUT -p icmpv6 -j ACCEPT 2>/dev/null || sudo ip6tables -A INPUT -p icmpv6 -j ACCEPT
-
-  echo -e "${GREEN}✅ 6to4 tunnel ready using $TUN_IF${NC}"
-  echo -e "🌐 Your IPv6:  ${YELLOW}$MY_IPV6${NC}"
-  echo -e "🌐 Peer IPv6:  ${YELLOW}$PEER_IPV6${NC}"
-  echo -e "🧪 Test:      ${CYAN}ping6 $PEER_IPV6${NC}"
-
   echo "$ROLE" > ~/.6to4_role
   echo "$IRAN_IPV4" > ~/.6to4_iran_ipv4
+
+  echo -e "${BLUE}[+] Creating 6to4 IPv6 tunnel: $TUN_IF...${NC}"
+  sudo modprobe ipv6
+  sudo ip tunnel add "$TUN_IF" mode sit remote any local "$MY_IPV4" ttl 255 || true
+  sudo ip link set "$TUN_IF" up
+  sudo ip -6 addr add "$MY_IPV6/16" dev "$TUN_IF" || true
+  sudo ip6tables -C INPUT -p icmpv6 -j ACCEPT 2>/dev/null || sudo ip6tables -A INPUT -p icmpv6 -j ACCEPT
+
+  echo -e "${GREEN}✅ Tunnel created: ${YELLOW}$TUN_IF${NC}"
+  echo -e "🌐 Your IPv6:  ${YELLOW}$MY_IPV6${NC}"
+  echo -e "🌐 Peer IPv6:  ${YELLOW}$PEER_IPV6${NC}"
+  echo -e "🧪 Test with: ${CYAN}ping6 $PEER_IPV6${NC}"
 }
 
-show_ipv6() {
-  echo -e "\n${CYAN}🛰️ Your active 6to4 IPv6 addresses:${NC}"
-  ip -6 addr show | grep -oP 'inet6 2002:[0-9a-f:]+(?=/)' | awk '{print $2}' || echo -e "${RED}[!] No 6to4 IPv6 found${NC}"
+show_ipv6_list() {
+  echo -e "\n${CYAN}🛰️ Active Tunnela IPv6 addresses:${NC}"
+  ip -6 addr | grep -oP '2002:[0-9a-f:]+(?=/)' | sort | uniq
 }
 
 remove_all_tunnels() {
-  echo -e "${YELLOW}Removing all tunnels and related rules...${NC}"
-
-  for iface in $(ip tunnel show | grep '^t6t' | awk '{print $1}'); do
-    sudo ip tunnel del "$iface" 2>/dev/null && echo -e "${GREEN}✔ Removed tunnel: $iface${NC}"
+  echo -e "${YELLOW}Removing all Tunnela tunnels...${NC}"
+  for tun in $(ip tunnel show | grep '^t6t' | awk '{print $1}'); do
+    sudo ip tunnel del "$tun" 2>/dev/null
+    echo -e "${GREEN}✔ Removed tunnel: $tun${NC}"
   done
-
-  # Remove sit0 and gre0 if they exist
-  sudo ip -6 addr flush dev sit0 2>/dev/null
-  sudo ip link set sit0 down 2>/dev/null
-  sudo ip tunnel del sit0 2>/dev/null
-
-  sudo ip addr flush dev gre0 2>/dev/null
-  sudo ip link set gre0 down 2>/dev/null
-  sudo ip tunnel del gre0 2>/dev/null
-
-  # Remove iptables rules
   sudo ip6tables -D INPUT -p icmpv6 -j ACCEPT 2>/dev/null
-  sudo iptables -D INPUT -p gre -j ACCEPT 2>/dev/null
-
-  # Remove config files
   rm -f ~/.6to4_role ~/.6to4_iran_ipv4
-
-  echo -e "${GREEN}✔ All tunnels and configs removed.${NC}"
 }
 
 setup_rathole() {
   echo -e "\n${BLUE}[+] راه‌اندازی رتهول...${NC}"
-  echo -e "${CYAN}این ابزار از پروژه Musixal/rathole-tunnel استفاده می‌کند.${NC}"
-
-  ROLE=$(cat ~/.6to4_role 2>/dev/null || echo "unknown")
+  ROLE=$(cat ~/.6to4_role 2>/dev/null || echo "")
   IRAN_IPV4=$(cat ~/.6to4_iran_ipv4 2>/dev/null || echo "")
 
   if [[ "$ROLE" == "iran" ]]; then
-    echo -e "\n${GREEN}شما در سرور ایران هستید.${NC}"
-    echo -e "${YELLOW}در ادامه از شما پرسیده می‌شود آیا می‌خواهید از IPv6 استفاده کنید؟${NC}"
-    echo -e "${CYAN}✅ لطفاً در آن مرحله گزینه 'y' را وارد کنید تا تونل با IPv6 ساخته شود.${NC}"
-    echo -e "\n${GREEN}اگر آماده‌ای، Enter را بزن تا نصب رتهول آغاز شود...${NC}"
-    read
+    echo -e "${CYAN}✅ وقتی از شما پرسیده شد از IPv6 استفاده می‌کنید، گزینه 'y' را وارد کنید.${NC}"
+    read -p "${GREEN}اگر آماده‌اید، Enter بزنید تا رتهول اجرا شود...${NC}"
     bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
-
-  elif [[ "$ROLE" == "kharej" && -n "$IRAN_IPV4" ]]; then
+  elif [[ "$ROLE" == "kharej" ]]; then
     IRAN_IPV6=$(ipv4_to_6to4 "$IRAN_IPV4")
-    echo -e "\n${GREEN}🛰️ توجه: برای اتصال به سرور ایران، از آدرس IPv6 زیر استفاده کنید:${NC}"
-    echo -e "${YELLOW}$IRAN_IPV6${NC}"
-    echo -e "${CYAN}⏳ لطفاً وقتی اسکریپت از شما آدرس سرور می‌خواهد، همین IPv6 را وارد نمایید.${NC}"
-    echo -e "${CYAN}✅ اگر آماده‌ای، Enter را بزن تا وارد منوی رتهول شوی...${NC}"
-    read
+    echo -e "\n${GREEN}🛰️ IPv6 برای اتصال به سرور ایران:${NC} ${YELLOW}$IRAN_IPV6${NC}"
+    echo -e "${CYAN}✅ در مرحله وارد کردن آدرس سرور، این IPv6 را وارد نمایید.${NC}"
+    read -p "ادامه با Enter..." _
     bash <(curl -Ls --ipv4 https://raw.githubusercontent.com/Musixal/rathole-tunnel/main/rathole_v2.sh)
-
   else
-    echo -e "${RED}[!] نقش یا IP سرور ایران مشخص نیست. لطفاً ابتدا تونل 6to4 را پیکربندی کنید.${NC}"
+    echo -e "${RED}[!] نقش یا IP سرور ایران پیدا نشد. اول تونل بسازید.${NC}"
   fi
 }
 
+# Menu
 while true; do
   banner
-  echo -e "${YELLOW}Choose an option:${NC}"
+  echo -e "${YELLOW}Select an option:${NC}"
   echo " 1) Setup 6to4 Tunnel"
-  echo " 2) Show IPv6 Address"
-  echo " 3) Remove All 6to4 Tunnels"
+  echo " 2) Show IPv6 Addresses"
+  echo " 3) Remove All Tunnels"
   echo " 4) Setup Rathole Tunnel"
   echo " 0) Exit"
   echo -ne "\n${BLUE}Enter your choice: ${NC}"
@@ -134,12 +109,13 @@ while true; do
 
   case $CHOICE in
     1) setup_tunnel ;;
-    2) show_ipv6 ;;
+    2) show_ipv6_list ;;
     3) remove_all_tunnels ;;
     4) setup_rathole ;;
     0) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
     *) echo -e "${RED}Invalid option. Try again.${NC}" ;;
   esac
+
   echo -e "\n${CYAN}برای بازگشت به منو Enter بزنید...${NC}"
   read
 done
